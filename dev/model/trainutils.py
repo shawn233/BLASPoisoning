@@ -2,7 +2,7 @@
 Author: shawn233
 Date: 2021-01-18 21:44:58
 LastEditors: shawn233
-LastEditTime: 2021-01-19 17:04:10
+LastEditTime: 2021-04-01 19:39:53
 Description: PyTorch training utils
 '''
 
@@ -188,15 +188,12 @@ def train(
     logging.info("Training Finished.")
 
 
-
-from model import LeNet5
-from datautils import MyMNIST
-from torchvision.datasets import MNIST
-from torchvision import transforms
-
-
-
 def main():
+    from model import LeNet5
+    from datautils import MyMNIST
+    from torchvision.datasets import MNIST
+    from torchvision import transforms
+
     logging.basicConfig(level=logging.INFO)
     net = LeNet5(mnist=True)
     transform = transforms.ToTensor()

@@ -2,7 +2,7 @@
 Author: shawn233
 Date: 2021-01-17 19:21:41
 LastEditors: shawn233
-LastEditTime: 2021-01-17 19:50:22
+LastEditTime: 2021-04-01 20:17:07
 Description: PyTorch dataset utils
 '''
 
@@ -85,11 +85,9 @@ class SmallDataset(CustomDataset):
         if self.transform is not None:
             sample = self.transform(sample)
 
-        if target:
+        if target is not None:
             if self.target_transform is not None:
                 target = self.target_transform(target)
-        else:
-            target = None
         
         return sample, target
 
@@ -128,11 +126,9 @@ class LargeDataset(CustomDataset):
         if self.transform is not None:
             sample = self.transform(sample)
 
-        if target:
+        if target is not None:
             if self.target_transform is not None:
                 target = self.target_transform(target)
-        else:
-            target = None
         
         return sample, target
 
@@ -142,35 +138,32 @@ class LargeDataset(CustomDataset):
 
 
 
-from torchvision.datasets import MNIST
-
-class MyMNIST(MNIST):
-
-    def show(self, nrow:int = 8, ncol: int = 8, save_path: str = None, 
-            by_label: bool = False, **kwargs) -> None:
-        if by_label:
-            raise Exception(f"`by_label` argument not implemented. Try to set `by_label=False`.")
-        else:
-            # randomly obtain a batch of images
-            indices = np.arange(len(self))
-            np.random.shuffle(indices)
-
-            n_images = min(nrow * ncol, len(self))
-            grid_images = [self[indices[i]][0] for i in range(n_images)] # a list of tensors
-            grid_images = torch.stack(grid_images, dim=0)
-            
-            # show grid image using PIL
-            grid_image = make_grid(grid_images, nrow=nrow, **kwargs)
-            img = to_pil_image(grid_image)
-            img.show()
-
-            if save_path is not None:
-                logging.info(f"Saving grid image to {save_path}")
-                save_image(grid_images, nrow=nrow, **kwargs)
-
-
-
 def main():
+    from torchvision.datasets import MNIST
+
+    class MyMNIST(MNIST):
+        def show(self, nrow:int = 8, ncol: int = 8, save_path: str = None, 
+                by_label: bool = False, **kwargs) -> None:
+            if by_label:
+                raise Exception(f"`by_label` argument not implemented. Try to set `by_label=False`.")
+            else:
+                # randomly obtain a batch of images
+                indices = np.arange(len(self))
+                np.random.shuffle(indices)
+
+                n_images = min(nrow * ncol, len(self))
+                grid_images = [self[indices[i]][0] for i in range(n_images)] # a list of tensors
+                grid_images = torch.stack(grid_images, dim=0)
+                
+                # show grid image using PIL
+                grid_image = make_grid(grid_images, nrow=nrow, **kwargs)
+                img = to_pil_image(grid_image)
+                img.show()
+
+                if save_path is not None:
+                    logging.info(f"Saving grid image to {save_path}")
+                    save_image(grid_images, nrow=nrow, **kwargs)
+
     logging.basicConfig(level=logging.INFO)
     transform = transforms.ToTensor()
     my_mnist = MyMNIST("./dataset/mnist", train=True, download=True, transform=transform)

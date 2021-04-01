@@ -2,7 +2,7 @@
 Author: shawn233
 Date: 2021-04-01 03:53:14
 LastEditors: shawn233
-LastEditTime: 2021-04-01 04:00:50
+LastEditTime: 2021-04-01 20:20:43
 Description: Models
 '''
 
@@ -21,7 +21,7 @@ class TwoLayerFC(nn.Module):
 
     def forward(self, x):
         z = self.fc(x)
-        log_fs = F.log_softmax(z)
+        log_fs = F.log_softmax(z, dim=1)
         
         return log_fs
 
