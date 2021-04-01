@@ -6,11 +6,11 @@
  * @Description: Logistic Regression in OpenBLAS
  */
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<stdbool.h>
-#include<math.h>
-#include"../source/cblas.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <math.h>
+#include "include/cblas.h"
 
 #define ALLOC(type, var) net.var = (type *)malloc(net.size_##var * sizeof(type))
 #define ALLOC_DOUBLE(var) net.var = (double *)malloc(net.size_##var * sizeof(double))

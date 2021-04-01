@@ -93,3 +93,7 @@ benchmark/smallscaling
 CMakeCache.txt
 CMakeFiles/*
 .vscode
+
+dev/include
+dev/bin
+dev/lib
