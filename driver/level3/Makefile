@@ -2760,7 +2760,11 @@ sgemm_tt.$(PSUFFIX) : gemm.c level3.c ../../param.h
 	$(CC) $(PFLAGS) $(BLOCKS) -c -UDOUBLE -UCOMPLEX -DTT $< -o $(@F)
 
 dgemm_nn.$(PSUFFIX) : gemm.c level3.c ../../param.h
+	$(info $$PSUFFIX = $(PSUFFIX))
+	$(info $$PFLAGS = $(PFLAGS))
+	$(info $$BLOCKS = $(BLOCKS))
 	$(CC) $(PFLAGS) $(BLOCKS) -c -DDOUBLE -UCOMPLEX -DNN $< -o $(@F)
+	exit
 
 dgemm_nt.$(PSUFFIX) : gemm.c level3.c ../../param.h
 	$(CC) $(PFLAGS) $(BLOCKS) -c -DDOUBLE -UCOMPLEX -DNT $< -o $(@F)
