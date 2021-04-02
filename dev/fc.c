@@ -2,7 +2,7 @@
  * @Author: shawn233
  * @Date: 2021-03-05 19:11:15
  * @LastEditors: shawn233
- * @LastEditTime: 2021-03-14 21:12:24
+ * @LastEditTime: 2021-04-02 16:26:55
  * @Description: Logistic Regression in OpenBLAS
  */
 
@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
-#include "include/cblas.h"
+#include "./include/cblas.h"
 
 #define ALLOC(type, var) net.var = (type *)malloc(net.size_##var * sizeof(type))
 #define ALLOC_DOUBLE(var) net.var = (double *)malloc(net.size_##var * sizeof(double))
@@ -166,85 +166,85 @@ void forward(network *net, hyperparams *hp, double *X_batch) {
 }
 
 
-double backward(network *net, hyperparams *hp, int *batch_labels, double *X_batch) {
-    /* label \in [0, hp->n_labels - 1] */
-    int i, j, idx;
-    int label;
-    double log_yc, partial_az, rowsum_exp_Z;
-    double celoss = 0.0;
+// double backward(network *net, hyperparams *hp, int *batch_labels, double *X_batch) {
+//     /* label \in [0, hp->n_labels - 1] */
+//     int i, j, idx;
+//     int label;
+//     double log_yc, partial_az, rowsum_exp_Z;
+//     double celoss = 0.0;
 
-    // delta = - partial_az / logY[label]
-    for (i = 0; i < hp->batch_size; ++ i) {
-        label = batch_labels[i];
-        rowsum_exp_Z = net->rowsum_exp_Z[i];
-        log_yc = log(net->Y[i * hp->n_labels + label]);
-        celoss += - log_yc;
+//     // delta = - partial_az / logY[label]
+//     for (i = 0; i < hp->batch_size; ++ i) {
+//         label = batch_labels[i];
+//         rowsum_exp_Z = net->rowsum_exp_Z[i];
+//         log_yc = log(net->Y[i * hp->n_labels + label]);
+//         celoss += - log_yc;
         
-        for (j = 0; j < hp->n_labels; ++ j) {
-            idx = i * hp->n_labels + j;
-            if (j == label) {
-                partial_az = net->exp_Z[idx] * rowsum_exp_Z - pow(net->exp_Z[idx], 2.0);
-                partial_az = partial_az / pow(rowsum_exp_Z, 2.0);
-            } else {
-                partial_az = - net->exp_Z[i * hp->n_labels + label] * net->exp_Z[idx];
-                partial_az = partial_az / pow(rowsum_exp_Z, 2.0);
-            }
+//         for (j = 0; j < hp->n_labels; ++ j) {
+//             idx = i * hp->n_labels + j;
+//             if (j == label) {
+//                 partial_az = net->exp_Z[idx] * rowsum_exp_Z - pow(net->exp_Z[idx], 2.0);
+//                 partial_az = partial_az / pow(rowsum_exp_Z, 2.0);
+//             } else {
+//                 partial_az = - net->exp_Z[i * hp->n_labels + label] * net->exp_Z[idx];
+//                 partial_az = partial_az / pow(rowsum_exp_Z, 2.0);
+//             }
             
-            net->delta[idx] = - partial_az / log_yc;
-        }
+//             net->delta[idx] = - partial_az / log_yc;
+//         }
         
-    }
+//     }
 
-    celoss /= hp->batch_size;
+//     celoss /= hp->batch_size;
 
-    if (DEBUG)
-        print_vec_as_matrix("MATRIX delta", net->delta, hp->batch_size, hp->n_labels);
+//     if (DEBUG)
+//         print_vec_as_matrix("MATRIX delta", net->delta, hp->batch_size, hp->n_labels);
 
-    // A_update = X^T * delta / batch_size
-    blasint lda = hp->n_features;
-    blasint ldb = hp->n_labels;
-    blasint ldc = hp->n_labels;
+//     // A_update = X^T * delta / batch_size
+//     blasint lda = hp->n_features;
+//     blasint ldb = hp->n_labels;
+//     blasint ldc = hp->n_labels;
 
-    cblas_dgemm( \
-        CblasRowMajor, CblasTrans, CblasNoTrans, hp->n_features, hp->n_labels, hp->batch_size, \
-        1.0, X_batch, lda, net->delta, ldb, 0.0, net->A_update, ldc);
+//     cblas_dgemm( \
+//         CblasRowMajor, CblasTrans, CblasNoTrans, hp->n_features, hp->n_labels, hp->batch_size, \
+//         1.0, X_batch, lda, net->delta, ldb, 0.0, net->A_update, ldc);
 
-    for (i = 0; i < net->size_A_update; ++ i) {
-        net->A_update[i] /= (double)hp->batch_size;
-    }
+//     for (i = 0; i < net->size_A_update; ++ i) {
+//         net->A_update[i] /= (double)hp->batch_size;
+//     }
 
-    if (DEBUG)
-        print_vec_as_matrix("MATRIX A_update", net->A_update, hp->n_features, hp->n_labels);
+//     if (DEBUG)
+//         print_vec_as_matrix("MATRIX A_update", net->A_update, hp->n_features, hp->n_labels);
 
-    // bias_update = avg(delta, dim=0)
-    for (i = 0; i < net->size_bias_update; ++ i) {
-        net->bias_update[i] = 0.0;
-    }
-    for (i = 0; i < hp->batch_size; ++ i) {
-        for (j = 0; j < hp->n_labels; ++ j) {
-            net->bias_update[j] += net->delta[i * hp->n_labels + j];
-        }
-    }
-    for (i = 0; i < net->size_bias_update; ++ i) {
-        net->bias_update[i] /= (double)hp->batch_size;
-    }
+//     // bias_update = avg(delta, dim=0)
+//     for (i = 0; i < net->size_bias_update; ++ i) {
+//         net->bias_update[i] = 0.0;
+//     }
+//     for (i = 0; i < hp->batch_size; ++ i) {
+//         for (j = 0; j < hp->n_labels; ++ j) {
+//             net->bias_update[j] += net->delta[i * hp->n_labels + j];
+//         }
+//     }
+//     for (i = 0; i < net->size_bias_update; ++ i) {
+//         net->bias_update[i] /= (double)hp->batch_size;
+//     }
 
-    if (DEBUG) {
-        print_vec_as_matrix("MATRIX bias_update", net->bias_update, 1, hp->n_labels);
-    }
+//     if (DEBUG) {
+//         print_vec_as_matrix("MATRIX bias_update", net->bias_update, 1, hp->n_labels);
+//     }
     
-    cblas_daxpy(net->size_A, -hp->lr, net->A_update, 1, net->A, 1);
-    cblas_daxpy(net->size_bias, -hp->lr, net->bias_update, 1, net->bias, 1);
-    if (hp->lr > 0.01)
-        hp->lr = hp->lr * 0.5;
+//     cblas_daxpy(net->size_A, -hp->lr, net->A_update, 1, net->A, 1);
+//     cblas_daxpy(net->size_bias, -hp->lr, net->bias_update, 1, net->bias, 1);
+//     if (hp->lr > 0.01)
+//         hp->lr = hp->lr * 0.5;
 
-    if (DEBUG) {
-        print_vec_as_matrix("MATRIX A (update)", net->A, hp->n_features, hp->n_labels);
-        print_vec_as_matrix("MATRIX bias (update)", net->bias, 1, hp->n_labels);
-    }
+//     if (DEBUG) {
+//         print_vec_as_matrix("MATRIX A (update)", net->A, hp->n_features, hp->n_labels);
+//         print_vec_as_matrix("MATRIX bias (update)", net->bias, 1, hp->n_labels);
+//     }
 
-    return celoss;
-}
+//     return celoss;
+// }
 
 
 double accuracy(hyperparams *hp, network *net, int *batch_Y) {
@@ -266,45 +266,74 @@ double accuracy(hyperparams *hp, network *net, int *batch_Y) {
 }
 
 
-void test() {
-    
-}
-
-
-void train(hyperparams *hp, network *net, dataset *data) {
-    int epoch, n_batch;
+void test(hyperparams *hp, network *net, dataset *data) {
+    int n_batch;
     double *batch_X;
     int *batch_Y;
-    double celoss, acc;
+    double acc;
     double running_loss, running_acc;
 
     int n_batches = hp->n_samples / hp->batch_size;
     
-    for (epoch = 0; epoch < hp->n_epochs; ++ epoch) {
-        running_loss = running_acc = 0.0;
-        
-        for (n_batch = 0; n_batch < n_batches; ++ n_batch) {
-            batch_X = data->features + n_batch * hp->batch_size * hp->n_features;
-            batch_Y = data->labels + n_batch * hp->batch_size;
+    running_loss = running_acc = 0.0;
+    
+    for (n_batch = 0; n_batch < n_batches; ++ n_batch) {
+        batch_X = data->features + n_batch * hp->batch_size * hp->n_features;
+        batch_Y = data->labels + n_batch * hp->batch_size;
 
-            if (DEBUG) {
-                print_vec_as_matrix("MATRIX BATCH_X", batch_X, hp->batch_size, hp->n_features);
-                print_vec_as_matrix_int("MATRIX BATCH_Y", batch_Y, hp->batch_size, 1);
-            }
-            
-            forward(net, hp, batch_X);
-            celoss = backward(net, hp, batch_Y, batch_X);
-            acc = accuracy(hp, net, batch_Y);
-            
-            running_loss += celoss;
-            running_acc += acc;
+        if (DEBUG) {
+            print_vec_as_matrix("MATRIX BATCH_X", batch_X, hp->batch_size, hp->n_features);
+            print_vec_as_matrix_int("MATRIX BATCH_Y", batch_Y, hp->batch_size, 1);
         }
+        
+        forward(net, hp, batch_X);
+        // celoss = backward(net, hp, batch_Y, batch_X);
+        acc = accuracy(hp, net, batch_Y);
+        
+        // running_loss += celoss;
+        running_acc += acc;
+    }
 
-        printf(
-            "epoch %d / %d loss: %.4lf acc: %.4lf\n", 
-            epoch, hp->n_epochs, running_loss / n_batches, running_acc / n_batches);
-    } 
+    printf(
+        "test loss: %.4lf acc: %.4lf\n", 
+        running_loss / n_batches, running_acc / n_batches);
 }
+
+
+// void train(hyperparams *hp, network *net, dataset *data) {
+//     int epoch, n_batch;
+//     double *batch_X;
+//     int *batch_Y;
+//     double celoss, acc;
+//     double running_loss, running_acc;
+
+//     int n_batches = hp->n_samples / hp->batch_size;
+    
+//     for (epoch = 0; epoch < hp->n_epochs; ++ epoch) {
+//         running_loss = running_acc = 0.0;
+        
+//         for (n_batch = 0; n_batch < n_batches; ++ n_batch) {
+//             batch_X = data->features + n_batch * hp->batch_size * hp->n_features;
+//             batch_Y = data->labels + n_batch * hp->batch_size;
+
+//             if (DEBUG) {
+//                 print_vec_as_matrix("MATRIX BATCH_X", batch_X, hp->batch_size, hp->n_features);
+//                 print_vec_as_matrix_int("MATRIX BATCH_Y", batch_Y, hp->batch_size, 1);
+//             }
+            
+//             forward(net, hp, batch_X);
+//             celoss = backward(net, hp, batch_Y, batch_X);
+//             acc = accuracy(hp, net, batch_Y);
+            
+//             running_loss += celoss;
+//             running_acc += acc;
+//         }
+
+//         printf(
+//             "epoch %d / %d loss: %.4lf acc: %.4lf\n", 
+//             epoch, hp->n_epochs, running_loss / n_batches, running_acc / n_batches);
+//     } 
+// }
 
 
 int main(int argc, char *argv[]) {
@@ -316,12 +345,12 @@ int main(int argc, char *argv[]) {
     // hyperparameters
     hyperparams hp;
 
-    hp.n_features = 5;
-    hp.n_labels = 2;
-    hp.n_samples = 100;
-    hp.batch_size = 50;
-    hp.n_epochs = 10;
-    hp.lr = 5;
+    hp.n_features = 4;
+    hp.n_labels = 3;
+    hp.n_samples = 150;
+    hp.batch_size = 16;
+    hp.n_epochs = 100;
+    hp.lr = 0.1;
 
     // parameters
     network net;
@@ -388,11 +417,11 @@ int main(int argc, char *argv[]) {
     iris.features = (double *)malloc(iris.size_features * sizeof(double));
     iris.labels = (int *)malloc(iris.size_labels * sizeof(int));
 
-    // fp_features = fopen("./data/iris/iris-features.txt", "r");
-    // fp_labels = fopen("./data/iris/iris-labels.txt", "r");
+    fp_features = fopen("./data/iris/iris-features.txt", "r");
+    fp_labels = fopen("./data/iris/iris-labels.txt", "r");
 
-    fp_features = fopen("./data/gen/gen-features.txt", "r");
-    fp_labels = fopen("./data/gen/gen-labels.txt", "r");
+    // fp_features = fopen("./data/gen/gen-features.txt", "r");
+    // fp_labels = fopen("./data/gen/gen-labels.txt", "r");
     
     /* Can we automatically produce the format string? */
     int j;
@@ -417,8 +446,30 @@ int main(int argc, char *argv[]) {
     //     print_vec_as_matrix_int("LABELS", iris.labels, max_print_features, 1);
     // }
 
+    // Load external parameters
+    FILE *fp_params;
+    fp_params = fopen("./model/iris/best.txt", "r");
 
-    train(&hp, &net, &iris);
+    fscanf(fp_params, "WEIGHT:\n");
+    for (i = 0; i < hp.n_labels; ++ i) {
+        for (j = 0; j < hp.n_features; ++ j) {
+            fscanf(fp_params, "%lf", &net.A[i * hp.n_features + j]);
+        }
+        fscanf(fp_params, "\n");
+    }
+
+    fscanf(fp_params, "BIAS:\n");
+    for (i = 0; i < hp.n_labels; ++ i) {
+        fscanf(fp_params, "%lf", &net.bias[i]);
+    }
+    fscanf(fp_params, "\n");
+
+    fclose(fp_params);
+
+    print_vec_as_matrix("A LOAD", net.A, hp.n_labels, hp.n_features);
+    print_vec_as_matrix("bias LOAD", net.bias, hp.n_labels, 1);
+
+    test(&hp, &net, &iris);
 
 
     printf("\nDone!\n");

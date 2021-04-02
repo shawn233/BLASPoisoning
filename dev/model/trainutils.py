@@ -2,7 +2,7 @@
 Author: shawn233
 Date: 2021-01-18 21:44:58
 LastEditors: shawn233
-LastEditTime: 2021-04-01 19:39:53
+LastEditTime: 2021-04-02 15:12:45
 Description: PyTorch training utils
 '''
 
@@ -40,6 +40,8 @@ def train(
         device: str = "cpu",
         display_step: int = 100,
         model_root: str = None,     # if not None, save latest and best model to model_root
+        best_only: bool = True,    # if True, only save the best checkpoint
+        save_interval: int = 10,    # interval to save model checkpoints, only effective when best_only is False
         load_latest: bool = False,  # if True, continue on checkpoint (model_latest.ckpt)
         # basic plotting utility
         plot_loss: bool = False,
@@ -98,6 +100,13 @@ def train(
         train_acc_y = []
         test_acc_y = []
 
+    best_train_acc = 0.0
+    if model_root is not None:
+        if not os.path.exists(model_root):
+            logging.info(f"model_root not existed. Creating directory {model_root}")
+            os.makedirs(model_root, exist_ok=False)
+
+
     # Train by epochs
     for epoch in range(epochs):
         logging.info(f"epoch {epoch+1}/{epochs}")
@@ -154,6 +163,7 @@ def train(
         train_acc = train_total_correct / train_total
 
         # Validate
+        test_loss, test_acc = None, None
         if test_loader is not None:
             test_total_loss = 0.0
             test_total_correct, test_total = 0, 0
@@ -185,6 +195,34 @@ def train(
         if scheduler is not None:
             scheduler.step()
 
+        # Save
+        if model_root is not None:
+            if not best_only and epoch % save_interval == 0:
+                torch.save({
+                    "epoch": epoch,
+                    "model_state_dict": net.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "train_loss": train_loss,
+                    "train_acc": train_acc,
+                    "test_loss": test_loss,
+                    "test_acc": test_acc
+                }, os.path.join(model_root, f"epoch{epoch}.ckpt"))
+
+            if train_acc > best_train_acc:
+                best_train_acc = train_acc
+                torch.save({
+                    "epoch": epoch,
+                    "model_state_dict": net.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "train_loss": train_loss,
+                    "train_acc": train_acc,
+                    "test_loss": test_loss,
+                    "test_acc": test_acc
+                }, os.path.join(model_root, "best.ckpt"))
+                logging.info(f"Best model updated at epoch {epoch} of "
+                            f"training accuracy {100.*train_acc:4.2f}%")
+    
+
     logging.info("Training Finished.")
 
 
@@ -213,10 +251,11 @@ def main():
         "device": "cuda:0",
         "display_step": 100,
         "model_root": None,
+        "best_only": True,
+        "save_interval": 10,
         "load_latest": False,
     }
     train(net, dataset_train, dataset_test, **params)
-
 
 
 if __name__ == "__main__":

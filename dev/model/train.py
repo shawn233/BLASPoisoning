@@ -2,7 +2,7 @@
 Author: shawn233
 Date: 2021-04-01 03:48:28
 LastEditors: shawn233
-LastEditTime: 2021-04-01 20:21:43
+LastEditTime: 2021-04-02 14:25:18
 Description: Train model
 '''
 
@@ -56,19 +56,19 @@ def main():
     # transform = transforms.ToTensor()
     iris = Iris(root="../data/iris/", train=True)
     params = {
-        "lr": 0.1,
+        "lr": 0.01,
         "momentum": 0.9,
         "weight_decay": 0.01,
         "gamma": 0.1,
         "decay_delay": None,
         "batch_size": 16,
-        "epochs": 10,
+        "epochs": 100,
         "early_stop": None,
         "num_workers": 4,
         "optimizer": "adam",
-        "device": "cuda:0",
-        "display_step": 10,
-        "model_root": None,
+        "device": "cpu",
+        "display_step": 1,
+        "model_root": "./iris",
         "load_latest": False,
     }
     train(net, iris, **params)
