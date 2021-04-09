@@ -2,7 +2,7 @@
 Author: shawn233
 Date: 2021-01-18 21:44:58
 LastEditors: shawn233
-LastEditTime: 2021-04-02 15:12:45
+LastEditTime: 2021-04-07 11:25:34
 Description: PyTorch training utils
 '''
 
@@ -19,6 +19,7 @@ import os
 import shutil
 import logging
 from typing import Any, Optional, Callable, Union, List
+import pickle
 
 import matplotlib.pyplot as plt
 
@@ -35,7 +36,7 @@ def train(
         decay_delay: int = None,    # for StepLR (required argument): `lr` decay interval
         batch_size: int = 128,
         epochs: int = 50,
-        num_workers: int = 0,   # recommend: 4 x #GPU
+        num_workers: int = None,   # (disabled) recommend: 4 x #GPU
         optimizer: str = "adam",
         device: str = "cpu",
         display_step: int = 100,
@@ -46,18 +47,26 @@ def train(
         # basic plotting utility
         plot_loss: bool = False,
         plot_acc: bool = False,
+        loss_plot_path: str = "./loss_plot.png",
+        acc_plot_path: str = "./acc_plot.png",
+        plot_dump_path: str = "./plot.dmp",
+        dpi: int = 100,
         drop_last: bool = False,    # for DataLoader
+        early_stop: bool = False,
         **kwargs
 ) -> None:
     logging.warning(f"Parameters not implemented: {kwargs}.")
 
     # Data loaders
     train_loader = DataLoader(dataset_train, batch_size=batch_size, 
-                              shuffle=True, num_workers=num_workers,
-                              drop_last=drop_last)
+                              shuffle=True, 
+                              #num_workers=num_workers,
+                              drop_last=drop_last,)
     if dataset_test is not None:
         test_loader = DataLoader(dataset_test, batch_size=batch_size,
-                                 shuffle=False, num_workers=num_workers)
+                                 shuffle=False, 
+                                 #num_workers=num_workers,
+                                 )
     else:
         test_loader = None
 
@@ -90,22 +99,32 @@ def train(
     criterion = nn.NLLLoss()
 
     # Plotting
-    n_batch_train = np.ceil(float(len(dataset_train)) / batch_size)
-    if drop_last:
-        n_batch_train = n_batch_train - 1
+    # n_batch_train = np.ceil(float(len(dataset_train)) / batch_size)
+    # if drop_last:
+    #     n_batch_train = n_batch_train - 1
     if plot_loss:
-        train_loss_y = []
-        test_loss_y = []
+        train_loss_y, test_loss_y = [], []
     if plot_acc:
-        train_acc_y = []
-        test_acc_y = []
+        train_acc_y, test_acc_y = [], []
+    if plot_loss or plot_acc:
+        train_x, test_x = [], []
+        plot_x_cnt = 0
 
-    best_train_acc = 0.0
+    # Model Saving
+    best_model_acc = -1. # test acc if dataset_test is provided, otherwise train acc
+    train_loss, train_acc = None, None
+    test_loss, test_acc = None, None
     if model_root is not None:
         if not os.path.exists(model_root):
             logging.info(f"model_root not existed. Creating directory {model_root}")
             os.makedirs(model_root, exist_ok=False)
 
+    # Result Reporting
+    best_train_loss, best_train_acc = 1000000.0, 0.0
+    best_test_loss, best_test_acc = 1000000.0, 0.0
+
+    # Early Stop when loss decrease is too small
+    prev_train_loss = None
 
     # Train by epochs
     for epoch in range(epochs):
@@ -138,8 +157,6 @@ def train(
             # statistics: loss
             running_loss += loss.item()
             train_total_loss += (loss.item() * labels.size(0))
-            if plot_loss:
-                train_loss_y.append(loss.item())
             
             # statistics: accuracy
             running_total += labels.size(0)
@@ -148,8 +165,15 @@ def train(
             n_correct = (predicted == labels).sum().item()
             running_correct += n_correct
             train_total_correct += n_correct
+
+            # plotting
+            if plot_loss:
+                train_loss_y.append(loss.item())
             if plot_acc:
                 train_acc_y.append(n_correct / labels.size(0))
+            if plot_loss or plot_acc:
+                train_x.append(plot_x_cnt)
+                plot_x_cnt += 1
             
             # show statistics
             if idx % display_step + 1 == display_step:
@@ -161,9 +185,10 @@ def train(
 
         train_loss = train_total_loss / train_total
         train_acc = train_total_correct / train_total
+        best_train_loss = min(best_train_loss, train_loss)
+        best_train_acc = max(best_train_acc, train_acc)
 
         # Validate
-        test_loss, test_acc = None, None
         if test_loader is not None:
             test_total_loss = 0.0
             test_total_correct, test_total = 0, 0
@@ -182,8 +207,19 @@ def train(
                     _, predicted = torch.max(log_fs.data, 1)
                     test_total_correct += (predicted == labels).sum().item()
 
+            # statistics: loss and accuracy
             test_loss = test_total_loss / test_total
             test_acc = test_total_correct / test_total
+            best_test_loss = min(best_test_loss, test_loss)
+            best_test_acc = max(best_test_acc, test_acc)
+
+            # plotting
+            if plot_loss:
+                test_loss_y.append(test_loss)
+            if plot_acc:
+                test_acc_y.append(test_acc)
+            if plot_loss or plot_acc:
+                test_x.append(plot_x_cnt)
 
             logging.info(f"==> epoch {epoch+1}/{epochs}\t"
                         f"[train] loss: {train_loss:.4f}\tacc: {100.*train_acc:4.2f}%\t"
@@ -192,38 +228,84 @@ def train(
             logging.info(f"==> epoch {epoch+1}/{epochs}\t"
                         f"[train] loss: {train_loss:.4f}\tacc: {100.*train_acc:4.2f}%")
         
+        if early_stop:
+            if prev_train_loss is not None and \
+                    (train_loss < prev_train_loss and  
+                    train_loss - prev_train_loss < 1e-5):
+                logging.warning(f"Early Stop triggered at epoch {epoch}"
+                                f" with loss {train_loss}")
+                break
+            else:
+                prev_train_loss = train_loss
+
+
         if scheduler is not None:
             scheduler.step()
 
         # Save
         if model_root is not None:
-            if not best_only and epoch % save_interval == 0:
-                torch.save({
-                    "epoch": epoch,
-                    "model_state_dict": net.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "train_loss": train_loss,
-                    "train_acc": train_acc,
-                    "test_loss": test_loss,
-                    "test_acc": test_acc
-                }, os.path.join(model_root, f"epoch{epoch}.ckpt"))
+            try:
+                if not best_only and epoch % save_interval == 0:
+                    torch.save({
+                        "epoch": epoch,
+                        "model_state_dict": net.state_dict(),
+                        "optimizer_state_dict": optimizer.state_dict(),
+                        "train_loss": train_loss,
+                        "train_acc": train_acc,
+                        "test_loss": test_loss,
+                        "test_acc": test_acc
+                    }, os.path.join(model_root, f"epoch{epoch}.ckpt"))
 
-            if train_acc > best_train_acc:
-                best_train_acc = train_acc
-                torch.save({
-                    "epoch": epoch,
-                    "model_state_dict": net.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "train_loss": train_loss,
-                    "train_acc": train_acc,
-                    "test_loss": test_loss,
-                    "test_acc": test_acc
-                }, os.path.join(model_root, "best.ckpt"))
-                logging.info(f"Best model updated at epoch {epoch} of "
-                            f"training accuracy {100.*train_acc:4.2f}%")
-    
+                if (dataset_test is not None and test_acc > best_model_acc) \
+                        or (dataset_test is None and train_acc > best_model_acc):
+                    best_model_acc = test_acc if dataset_test is not None else train_acc
+                    torch.save({
+                        "epoch": epoch,
+                        "model_state_dict": net.state_dict(),
+                        "optimizer_state_dict": optimizer.state_dict(),
+                        "train_loss": train_loss,
+                        "train_acc": train_acc,
+                        "test_loss": test_loss,
+                        "test_acc": test_acc
+                    }, os.path.join(model_root, "best.ckpt"))
+                    logging.info(f"Best model updated at epoch {epoch} of "
+                                f"model accuracy {100.*best_model_acc:4.2f}%")
+            except PermissionError:
+                logging.warning(f"Model (epoch {epoch}) not saved due to"
+                                f" PermissionError. (model write too frequent)")
 
     logging.info("Training Finished.")
+    logging.info(f"Report Best: "
+                f"[train] loss: {best_train_loss:.4f} "
+                f"acc: {100.*best_train_acc:4.2f}%"
+                f"[test] loss: {best_test_loss:.4f} "
+                f"acc: {100.*best_test_acc:4.2f}%")
+
+    if plot_acc or plot_loss:
+        plt_dump = {"train_x": train_x, "test_x": test_x}
+        
+        if plot_loss:
+            plt_dump["train_loss"] = train_loss_y
+            plt_dump["test_loss"] = test_loss_y
+            
+            plt.figure()
+            plt.plot(train_x, train_loss_y, label="Train Loss")
+            plt.plot(test_x, test_loss_y, label="Test Loss")
+            plt.legend()
+            plt.savefig(loss_plot_path, dpi=dpi)
+        
+        if plot_acc:
+            plt_dump["train_acc"] = train_acc_y
+            plt_dump["test_acc"] = test_acc_y
+            
+            plt.figure()
+            plt.plot(train_x, train_acc_y, label="Train Accuracy")
+            plt.plot(test_x, test_acc_y, label="Test Accuracy")
+            plt.legend()
+            plt.savefig(acc_plot_path, dpi=dpi)
+        
+        with open(plot_dump_path, "wb") as dmp:
+            pickle.dump(plt_dump, dmp) 
 
 
 def main():
@@ -256,6 +338,7 @@ def main():
         "load_latest": False,
     }
     train(net, dataset_train, dataset_test, **params)
+
 
 
 if __name__ == "__main__":

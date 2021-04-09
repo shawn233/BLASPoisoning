@@ -2,7 +2,7 @@
 Author: shawn233
 Date: 2021-01-17 19:21:41
 LastEditors: shawn233
-LastEditTime: 2021-04-01 20:17:07
+LastEditTime: 2021-04-06 11:21:06
 Description: PyTorch dataset utils
 '''
 
@@ -76,6 +76,30 @@ class SmallDataset(CustomDataset):
         # load data from `self.root`, depending on the value of `train`
         self.data = None
         self.labels = None
+
+        # _data, _labels = [], []
+
+        # with open(os.path.join(self.root, "data.txt"), "r") as f:
+        #     for line in f:
+        #         line = line.strip().split()
+        #         _data.append([float(i) for i in line[:-1]])
+        #         _labels.append(int(float(line[-1])))
+
+        # train_size = int(0.7 * len(_labels))
+        # indices = np.arange(len(_labels))
+        # np.random.shuffle(indices)
+
+        # _data = np.asarray(_data)
+        # _labels = np.asarray(_labels)
+
+        # if train:
+        #     self.data = _data[indices[:train_size]]
+        #     self.labels = _labels[indices[:train_size]]
+        # else:
+        #     self.data = _data[indices[train_size:]]
+        #     self.labels = _labels[indices[train_size:]]
+
+        # print(self.data.shape, self.labels.shape)
 
 
     def __getitem__(self, idx: int) -> Tuple[Any, Any]:
