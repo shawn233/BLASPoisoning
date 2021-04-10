@@ -2,7 +2,7 @@
 Author: shawn233
 Date: 2021-01-18 21:44:58
 LastEditors: shawn233
-LastEditTime: 2021-04-07 11:25:34
+LastEditTime: 2021-04-10 11:03:07
 Description: PyTorch training utils
 '''
 
@@ -22,6 +22,7 @@ from typing import Any, Optional, Callable, Union, List
 import pickle
 
 import matplotlib.pyplot as plt
+from sklearn.metrics import classification_report
 
 
 
@@ -66,6 +67,7 @@ def train(
         test_loader = DataLoader(dataset_test, batch_size=batch_size,
                                  shuffle=False, 
                                  #num_workers=num_workers,
+                                 drop_last=False
                                  )
     else:
         test_loader = None
@@ -111,9 +113,9 @@ def train(
         plot_x_cnt = 0
 
     # Model Saving
-    best_model_acc = -1. # test acc if dataset_test is provided, otherwise train acc
-    train_loss, train_acc = None, None
-    test_loss, test_acc = None, None
+    best_model_acc = None
+    best_model_loss = None
+    train_loss, train_acc, test_loss, test_acc = None, None, None, None
     if model_root is not None:
         if not os.path.exists(model_root):
             logging.info(f"model_root not existed. Creating directory {model_root}")
@@ -256,9 +258,34 @@ def train(
                         "test_acc": test_acc
                     }, os.path.join(model_root, f"epoch{epoch}.ckpt"))
 
-                if (dataset_test is not None and test_acc > best_model_acc) \
-                        or (dataset_test is None and train_acc > best_model_acc):
-                    best_model_acc = test_acc if dataset_test is not None else train_acc
+                # Check if the current model is better
+                save_best_flag = False
+                if dataset_test is not None:
+                    if best_model_acc is None:
+                        best_model_acc = test_acc
+                        best_model_loss = test_loss
+                        save_best_flag = True
+                    elif test_acc > best_model_acc:
+                        best_model_acc = test_acc
+                        save_best_flag = True
+                    elif test_acc == best_model_acc:
+                        if test_loss < best_model_loss:
+                            best_model_loss = test_loss
+                            save_best_flag = True
+                else:
+                    if best_model_acc is None:
+                        best_model_acc = train_acc
+                        best_model_loss = train_loss
+                        save_best_flag = True
+                    elif train_acc > best_model_acc:
+                        best_model_acc = train_acc
+                        save_best_flag = True
+                    elif train_acc == best_model_acc:
+                        if train_loss < best_model_loss:
+                            best_model_loss = train_loss
+                            save_best_flag = True
+                
+                if save_best_flag:
                     torch.save({
                         "epoch": epoch,
                         "model_state_dict": net.state_dict(),
@@ -306,6 +333,60 @@ def train(
         
         with open(plot_dump_path, "wb") as dmp:
             pickle.dump(plt_dump, dmp) 
+
+
+
+def test(
+        net,
+        dataset_test,
+        ckpt_path: str = None,          # If provided, load model from checkpoint
+        device: str = "cpu",
+        batch_size: int = 64,
+        **kwargs
+) -> None:
+    logging.warning(f"Parameters not implemented: {kwargs}.")
+
+    if ckpt_path is not None:
+        ckpt = torch.load(ckpt_path)
+        net.load_state_dict(ckpt["model_state_dict"])
+        logging.info(f"Checkpoint loaded: epoch {ckpt['epoch']} "
+                    f"[train] loss: {ckpt['train_loss']:.4f} acc: {100.*ckpt['train_acc']:.2f}%"
+                    f" [test] loss: {ckpt['test_loss']:.4f} acc: {100.*ckpt['test_acc']:.2f}%")
+
+    test_loader = DataLoader(
+        dataset_test, batch_size=batch_size, shuffle=False, drop_last=False)
+
+    # Testing device
+    device = device.lower()
+    if torch.cuda.is_available() and device == "cpu":
+        logging.warning(f"Cuda is available but training device is CPU.")
+    device = torch.device(device)
+    net.to(device)
+
+    # Loss function
+    criterion = nn.NLLLoss()
+
+    # Test 
+    y_true, y_pred = [], []
+    running_loss, running_total = 0.0, 0
+
+    with torch.no_grad():
+        net.eval()
+        for idx, data in enumerate(test_loader, 0):
+            y_true.append(data[1].numpy())
+            inputs, labels = data[0].to(device), data[1].to(device)
+
+            log_fs = net(inputs)
+            loss = criterion(log_fs, labels)
+            running_loss += loss
+            running_total += labels.size(0)
+            
+            _, predicted = torch.max(log_fs.data, 1)
+            y_pred.append(predicted.cpu().numpy())
+
+    print("Testing Result:")
+    print(classification_report(np.concatenate(y_true), np.concatenate(y_pred)))
+
 
 
 def main():
