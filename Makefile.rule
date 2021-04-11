@@ -121,10 +121,10 @@ NO_SHARED = 1
 
 # If you don't need LAPACK, please comment this in.
 # If you set NO_LAPACK=1, the build system automatically sets NO_LAPACKE=1.
-# NO_LAPACK = 1
+NO_LAPACK = 1
 
 # If you don't need LAPACKE (C Interface to LAPACK), please comment this in.
-# NO_LAPACKE = 1
+NO_LAPACKE = 1
 
 # Build LAPACK Deprecated functions since LAPACK 3.6.0
 BUILD_LAPACK_DEPRECATED = 1

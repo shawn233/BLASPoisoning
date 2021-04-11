@@ -49,6 +49,8 @@ int CNAME(BLASLONG m, BLASLONG n, BLASLONG dummy1, FLOAT beta,
   FLOAT ctemp1, ctemp2, ctemp3, ctemp4;
   FLOAT ctemp5, ctemp6, ctemp7, ctemp8;
 
+  printf("Yes I am in dgemm_beta_skylakex.c\n");
+
   /* fast path.. just zero the whole matrix */
   if (m == ldc && beta == ZERO) {
 	memset(c, 0, m * n * sizeof(FLOAT));
@@ -156,5 +158,7 @@ int CNAME(BLASLONG m, BLASLONG n, BLASLONG dummy1, FLOAT beta,
     } while (j > 0);
 
   }
+
+  printf("Yes I am in dgemm_beta_skylakex.c 2\n");
   return 0;
 };

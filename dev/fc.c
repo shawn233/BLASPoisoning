@@ -2,7 +2,7 @@
  * @Author: shawn233
  * @Date: 2021-03-05 19:11:15
  * @LastEditors: shawn233
- * @LastEditTime: 2021-04-02 16:26:55
+ * @LastEditTime: 2021-04-09 20:27:38
  * @Description: Logistic Regression in OpenBLAS
  */
 
@@ -86,7 +86,7 @@ void print_vec_as_matrix(const char *name, const double *vec, const int nrows, c
     printf("\n%s\n", name);
     for (i = 0; i < nrows; ++ i) {
         for (j = 0; j < ncols; ++ j)
-            printf("%lf\t", vec[ncols*i+j]);
+            printf("%.4lf\t", vec[ncols*i+j]);
         printf("\n");
     }
 }
@@ -139,7 +139,7 @@ void softmax(network *net, const size_t batch_size, const size_t n_labels) {
 void forward(network *net, hyperparams *hp, double *X_batch) {
     int i, j;
 
-    // copy bias to fill matric Z [!BUG: copy incorrect]
+    // copy bias to fill matric Z 
     for (i = 0; i < hp->batch_size; ++ i)
         cblas_dcopy(net->size_bias, net->bias, 1, net->Z + i * net->size_bias, 1);
 
@@ -147,12 +147,12 @@ void forward(network *net, hyperparams *hp, double *X_batch) {
     // print_vec_as_matrix("MATRIX B", net->Z, hp->batch_size, hp->n_labels);
 
     blasint lda = hp->n_features;
-    blasint ldb = hp->n_labels;
+    blasint ldb = hp->n_features;
     blasint ldc = hp->n_labels; 
 
     // Z = X * A + Z
     cblas_dgemm( \
-        CblasRowMajor, CblasNoTrans, CblasNoTrans, hp->batch_size, hp->n_labels, hp->n_features, \
+        CblasRowMajor, CblasNoTrans, CblasTrans, hp->batch_size, hp->n_labels, hp->n_features, \
         1.0, X_batch, lda, net->A, ldb, 1.0, net->Z, ldc);
     
     if (DEBUG)
@@ -245,6 +245,11 @@ void forward(network *net, hyperparams *hp, double *X_batch) {
 
 //     return celoss;
 // }
+
+
+double loss(hyperparams *hp, network *net, int *batch_Y) {
+    
+}
 
 
 double accuracy(hyperparams *hp, network *net, int *batch_Y) {
@@ -348,7 +353,7 @@ int main(int argc, char *argv[]) {
     hp.n_features = 4;
     hp.n_labels = 3;
     hp.n_samples = 150;
-    hp.batch_size = 16;
+    hp.batch_size = 75;
     hp.n_epochs = 100;
     hp.lr = 0.1;
 
@@ -467,7 +472,7 @@ int main(int argc, char *argv[]) {
     fclose(fp_params);
 
     print_vec_as_matrix("A LOAD", net.A, hp.n_labels, hp.n_features);
-    print_vec_as_matrix("bias LOAD", net.bias, hp.n_labels, 1);
+    print_vec_as_matrix("bias LOAD", net.bias, 1, hp.n_labels);
 
     test(&hp, &net, &iris);
 
