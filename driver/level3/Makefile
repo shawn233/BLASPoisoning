@@ -368,6 +368,11 @@ sgemm_tt.$(SUFFIX) : gemm.c level3.c ../../param.h
 	$(CC) $(CFLAGS) $(BLOCKS) -c -UDOUBLE -UCOMPLEX -DTT $< -o $(@F)
 
 dgemm_nn.$(SUFFIX) : gemm.c level3.c ../../param.h
+	$(info $$SUFFIX = $(SUFFIX))
+	$(info $$CFLAGS = $(CFLAGS))
+	# $(info $$PSUFFIX = $(PSUFFIX))
+	# $(info $$PFLAGS = $(PFLAGS))
+	$(info $$BLOCKS = $(BLOCKS))
 	$(CC) $(CFLAGS) $(BLOCKS) -c -DDOUBLE -UCOMPLEX -DNN $< -o $(@F)
 
 dgemm_nt.$(SUFFIX) : gemm.c level3.c ../../param.h

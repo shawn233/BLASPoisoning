@@ -1,0 +1,8 @@
+21-04-10
+
+Iris dataset
+No branch flipping: acc = 0.9733
+[1] change gemm.c line 348 to order != CBlasRowMajor, acc = 0.3333
+    - Explicit warning is triggered: ** On entry to DGEMM  parameter number  0 had an illegal value
+    - This modification causes parameter assignment failure in cblas_dgemm
+[2]

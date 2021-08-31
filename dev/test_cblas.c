@@ -10,7 +10,7 @@
 #include<stdlib.h>
 #include<stdbool.h>
 #include<math.h>
-#include"../source/cblas.h"
+#include"./include/cblas.h"
 
 
 void print_vec(double * vec, int sz) {
