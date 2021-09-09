@@ -2,7 +2,7 @@
  * @Author: shawn233
  * @Date: 2021-03-05 19:11:15
  * @LastEditors: shawn233
- * @LastEditTime: 2021-04-09 20:27:38
+ * @LastEditTime: 2021-04-10 21:14:08
  * @Description: Logistic Regression in OpenBLAS
  */
 
@@ -300,8 +300,8 @@ void test(hyperparams *hp, network *net, dataset *data) {
     }
 
     printf(
-        "test loss: %.4lf acc: %.4lf\n", 
-        running_loss / n_batches, running_acc / n_batches);
+        "\n[Result] test acc: %.2lf%%\n", 
+        100. * running_acc / n_batches);
 }
 
 

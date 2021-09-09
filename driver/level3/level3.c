@@ -197,7 +197,7 @@ int CNAME(blas_arg_t *args, BLASLONG *range_m, BLASLONG *range_n,
   double total;
 #endif
 
-  printf("Hello level3 operation template!\n");
+  // printf("Hello level3 operation template!\n");
 
   k = K;
 
@@ -313,7 +313,7 @@ int CNAME(blas_arg_t *args, BLASLONG *range_m, BLASLONG *range_n,
       if (min_i >= GEMM_P * 2) {
 	min_i = GEMM_P;
       } else {
-	if (min_i > GEMM_P) {
+	if (min_i <= GEMM_P) {
 	  min_i = ((min_i / 2 + GEMM_UNROLL_M - 1)/GEMM_UNROLL_M) * GEMM_UNROLL_M;
 	} else {
 	  l1stride = 0;
